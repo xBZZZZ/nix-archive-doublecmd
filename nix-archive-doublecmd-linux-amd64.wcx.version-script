@@ -1,0 +1,14 @@
+{
+global:
+	OpenArchive;
+	ReadHeader;
+	ReadHeaderEx;
+	ProcessFile;
+	SetProcessDataProc;
+	CloseArchive;
+	GetPackerCaps;
+	GetBackgroundFlags;
+	CanYouHandleThisFile;
+local:
+	*;
+};
