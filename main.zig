@@ -546,7 +546,6 @@ inline fn ProcessFileInternal(noalias handle:Handle,noalias outerr:*WcxError,ext
 	const OffsetAfterFile:u64=offset+|FileSize64;
 	{
 		const oc:comptime_int=OffsetCap(.{
-			OffsetInfo{.used=ReadBufSize,.needed=ReadBufSize},
 			OffsetInfoExpectNarStr(")"),
 			OffsetInfoExpectNarStr(")")
 		});
