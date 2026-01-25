@@ -579,7 +579,6 @@ inline fn ProcessFileInternal(noalias handle:Handle,noalias outerr:*WcxError,ext
 						}
 					}
 				}
-				//for(0..FileSize32,content)|_,c|if(c==0)return WcxError.E_BAD_DATA;
 				comptime if(@offsetOf(HandleData,"ReadBuf")+ReadBufSize>=@sizeOf(HandleData))@compileError("can't safely access after ReadBuf");
 				const TerminatorAddr:*u8=@ptrFromInt(content+FileSize32);
 				const OldTerminator:u8=TerminatorAddr.*;
