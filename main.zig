@@ -286,45 +286,7 @@ inline fn ExpectNarStr(noalias handle:Handle,noalias outerr:*WcxError,noalias st
 	handle.OffsetInFile=offset1+((len+7)&-8);
 }
 
-const OffsetInfo=struct{
-	used:comptime_int,
-	needed:comptime_int
-};
-
-fn OffsetInfoGetNarStr(noalias LongestStr:[]const u8) OffsetInfo{
-	return OffsetInfo{
-		.used=@as(comptime_int,LongestStr.len+15)&-8,
-		.needed=ReadBufSize+8
-	};
-}
-
-const OffsetInfoGetNarStrFull:OffsetInfo=OffsetInfo{
-	.used=ReadBufSize+8,
-	.needed=ReadBufSize+8
-};
-
-fn OffsetInfoExpectNarStr(noalias Str:[]const u8) OffsetInfo{
-	return OffsetInfo{
-		.used=@as(comptime_int,Str.len+15)&-8,
-		.needed=ReadBufSize
-	};
-}
-
-//OffsetInfoSkipNarStr should be last thing in OffsetCap tuple if if exists
-const OffsetInfoSkipNarStr:OffsetInfo=OffsetInfo{
-	.used=0,//don't know at compile time
-	.needed=ReadBufSize
-};
-
-fn OffsetCap(OffsetInfos:anytype) comptime_int{
-	var used:comptime_int=0;
-	var needed:comptime_int=0;
-	for(OffsetInfos)|i|{
-		needed=@max(needed,used+i.needed);
-		used=used+i.used;
-	}
-	return (1<<63)-needed;
-}
+const OffsetCap:comptime_int=4611686018427387903;
 
 inline fn NarStrIs(a:NarStr,noalias b:[]const u8) bool{
 	return a.len==@as(comptime_int,b.len) and !MyNotEqualAligned8(a.ptr,b.ptr,@as(comptime_int,b.len));
@@ -418,25 +380,7 @@ const tHeaderDataEx=extern struct{
 };
 
 inline fn ReadHeaderExInternal(noalias handle:Handle,noalias outerr:*WcxError,noalias HeaderDataEx:*tHeaderDataEx) OneError{
-	if(handle.OffsetInFile>OffsetCap(.{
-		OffsetInfo{
-			//get out of max possible number of folders
-			.used=(handle.PathBuf.len+1)/2*2*16,
-			.needed=((handle.PathBuf.len+1)/2*2-1)*16+ReadBufSize
-		},
-		OffsetInfoGetNarStr("entry"),
-		OffsetInfoExpectNarStr("("),
-		OffsetInfoExpectNarStr("name"),
-		OffsetInfoGetNarStrFull,
-		OffsetInfoExpectNarStr("node"),
-		OffsetInfoExpectNarStr("("),
-		OffsetInfoExpectNarStr("type"),
-		OffsetInfoGetNarStr("regular"),
-		OffsetInfoGetNarStr("executable"),
-		OffsetInfoExpectNarStr(""),
-		OffsetInfoExpectNarStr("contents"),
-		OffsetInfo{.used=8,.needed=ReadBufSize}
-	}) or !NarStrIs(while(true){
+	if(handle.OffsetInFile>OffsetCap or !NarStrIs(while(true){
 		const str:NarStr=try GetNarStr(handle,outerr);
 		if(!NarStrIs(str,")"))break str;
 		var PathBufValidBytes:usize=handle.PathBufValidBytes;
@@ -544,17 +488,11 @@ inline fn ProcessFileInternal(noalias handle:Handle,noalias outerr:*WcxError,ext
 	var offset:u64=handle.OffsetInFile;
 	const FileSize64:u64=handle.FileSize;
 	const OffsetAfterFile:u64=offset+|FileSize64;
-	{
-		const oc:comptime_int=OffsetCap(.{
-			OffsetInfoExpectNarStr(")"),
-			OffsetInfoExpectNarStr(")")
-		});
-		if(OffsetAfterFile>oc-7){
-			outerr.*=WcxError.E_BAD_DATA;
-			return OneError.e;
-		}
-		handle.OffsetInFile=(OffsetAfterFile+7)&(NextPowerOf2(oc)-8);
+	if(OffsetAfterFile>OffsetCap){
+		outerr.*=WcxError.E_BAD_DATA;
+		return OneError.e;
 	}
+	handle.OffsetInFile=(OffsetAfterFile+7)&(NextPowerOf2(OffsetCap)-8);
 	if(extract)switch(FileType){
 		.folder=>unreachable,//handled before
 		.symlink=>switch(FileSize64){//symlink
